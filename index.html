@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Q&A Assistant</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --background: #ffffff;
+            --text: #1f2937;
+            --card-bg: #f3f4f6;
+            --hover: #4f46e5;
+        }
+
+        [data-theme="dark"] {
+            --primary: #818cf8;
+            --secondary: #a78bfa;
+            --background: #111827;
+            --text: #f3f4f6;
+            --card-bg: #1f2937;
+            --hover: #6366f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            background: var(--card-bg);
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .landing-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .main-page {
+            display: none;
+            min-height: 100vh;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .get-started {
+            padding: 1rem 2rem;
+            font-size: 1.25rem;
+            border: none;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .get-started:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+            background: var(--card-bg);
+            cursor: pointer;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--hover);
+            transform: scale(1.01);
+        }
+
+        .question-section {
+            margin-top: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid var(--primary);
+            border-radius: 0.5rem;
+            background: var(--card-bg);
+            color: var(--text);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .result-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            background: var(--card-bg);
+        }
+
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hidden {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading {
+            display: none;
+            margin: 1rem 0;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        .error {
+            color: #ef4444;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    <canvas id="particles"></canvas>
+
+    <div class="landing-page">
+        <h1>AI-Powered Document Q&A</h1>
+        <p>Upload your documents and get instant answers to your questions</p>
+        <button class="get-started" onclick="showMainPage()">Get Started</button>
+    </div>
+
+    <div class="main-page">
+        <h1>Document Analysis</h1>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <p>Drop your PDF or TXT file here, or click to browse</p>
+            <input type="file" id="fileInput" hidden accept=".pdf,.txt" onchange="handleFileUpload(event)">
+        </div>
+
+        <div class="result-section" id="fileContent" style="display: none;">
+            <h2>Document Content</h2>
+            <div id="content"></div>
+        </div>
+
+        <div class="question-section">
+            <div class="input-group">
+                <input type="text" id="question" placeholder="Ask a question about the document...">
+                <button onclick="askQuestion()">Ask</button>
+            </div>
+            <div class="loading" id="loading">Thinking...</div>
+            <div class="result-section" id="answer" style="display: none;">
+                <h2>Answer</h2>
+                <p id="answerText"></p>
+                <p id="confidence" style="color: var(--primary); margin-top: 0.5rem;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTheme = 'light';
+        let documentContent = '';
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (currentTheme === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️';
+                currentTheme = 'dark';
+            } else {
+                body.removeAttribute('data-theme');
+                themeToggle.textContent = '🌙';
+                currentTheme = 'light';
+            }
+        }
+
+        // Particle animation
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = currentTheme === 'light' ? '#6366f1' : '#818cf8';
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const particle of particles) {
+                particle.update();
+                particle.draw();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        // Page transitions
+        const landingPage = document.querySelector('.landing-page');
+        const mainPage = document.querySelector('.main-page');
+
+        function showMainPage() {
+            gsap.to(landingPage, {
+                opacity: 0,
+                y: -20,
+                duration: 0.5,
+                onComplete: () => {
+                    landingPage.style.display = 'none';
+                    mainPage.style.display = 'block';
+                    gsap.fromTo(mainPage,
+                        { opacity: 0, y: 20 },
+                        { opacity: 1, y: 0, duration: 0.5 }
+                    );
+                }
+            });
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const data = await response.json();
+                if (!data.text) {
+                    throw new Error('No text content in response');
+                }
+
+                documentContent = data.text;
+                console.log('Document content:', documentContent); // Debug log
+
+                const fileContent = document.getElementById('fileContent');
+                const content = document.getElementById('content');
+                content.textContent = documentContent;
+                fileContent.style.display = 'block';
+                
+                gsap.fromTo(fileContent,
+                    { opacity: 0, y: 20 },
+                    { opacity: 1, y: 0, duration: 0.5 }
+                );
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to upload file: ' + error.message);
+            }
+        }
+
+        async function askQuestion() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value.trim();
+            
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            console.log('Document content before asking:', documentContent); // Debug log
+            if (!documentContent) {
+                alert('Please upload a document first');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            const answer = document.getElementById('answer');
+            const answerText = document.getElementById('answerText');
+            const confidence = document.getElementById('confidence');
+
+            loading.style.display = 'block';
+            answer.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        context: documentContent
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get answer');
+                }
+
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                answer.style.display = 'block';
+                answerText.textContent = data.answer;
+                confidence.textContent = `Confidence: ${Math.round(data.confidence * 100)}%`;
+
+                gsap.fromTo(answer,
+                    { opacity: 0, y: 20 },
+                    { opacity: 1, y: 0, duration: 0.5 }
+                );
+            } catch (error) {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                alert('Failed to get answer: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
